@@ -11,7 +11,7 @@ function show_loading() {
 }
 
 
-echo "Sorting email foldersca"
+echo "Sorting emails.."
 show_loading &
 loading_pid=$!
 
@@ -20,7 +20,7 @@ email_output=$(du -h --max-depth 1 /var/mail/virtual | sort -h)
 kill $loading_pid
 
 echo "Generating CSV File...."
-echo "Domain,Folder Size,Owner,Last Login" > output.csv
+echo "Domain,Folder Size,Owner,Last Login" > mailbox_data.csv
 
 
 show_loading &
@@ -32,19 +32,19 @@ while IFS= read -r line; do
     folder_size=$(echo "$line" | awk '{print $1}')
     domain_folder=$(echo "$line" | awk '{print $2}')
 
-    domain_name=$(basename "$domain_folder")
+    domain_name=$(basename "$domain_folder")	
 
     owner=$(whois "$domain_name" | grep -i 'org:.*')
+	
 
-    if echo "$owner" | grep -qE ""; then # insert org name between " "
-        owner="You are the owner"
+    if echo "$owner" | grep -qE "your host"; then
+        owner="Livebox"
     else
-        owner_dig=$(dig +short "$domain_name" | grep -iE '') # ""
-
-	if echo "$owner_dig" | grep -qE ""; then
-	    owner="You are the owner"
+        owner_dig=$(dig +short "$domain_name" NS)
+	    if echo "$owner_dig" | grep -qE "your host"; then
+	        owner="Livebox (via DNS)"
         else
-            owner="Not owner"
+            owner="Not Livebox"
         fi
     fi
 
@@ -56,11 +56,10 @@ while IFS= read -r line; do
         last_login_info="No logins found"
     fi
 
-    echo "$domain_name,$folder_size,$owner,$last_login_info" >> output.csv
+    echo "$domain_name,$folder_size,$owner,$last_login_info" >> mailbox_data.csv
 
 done <<< "$email_output"
 
 kill $loading_pid
 
-echo "Output saved to output.csv"
-
+echo "Output saved to mailbox_data.csv"
